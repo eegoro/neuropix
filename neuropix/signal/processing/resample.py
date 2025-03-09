@@ -2,6 +2,7 @@ from scipy import signal
 import torch
 import torch.fft
 import numpy as np
+from torch.utils.data import DataLoader, TensorDataset
 
 def resample_scipy(fs, new_fs, axis = 1):
     def resample_func(data):
@@ -11,13 +12,24 @@ def resample_scipy(fs, new_fs, axis = 1):
 def resample_torch(fs, new_fs, axis = 0):
     def resample_func(data):
         num = round((data.shape[-1]/fs)*new_fs)
-        data_torch = torch.from_numpy(data).to('cuda')
-        data_result = _resample_torch(data_torch, num, axis = axis)
-        data_torch = None
-        data_result = np.array(data_result.to('cpu'))
-        return data_result
-    return resample_func
+        dataset = TensorDataset(torch.from_numpy(data))
+        batch_size = 5
+        data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+        data_result = []
+        for batch in data_loader:
+            batch_on_gpu = batch[0].to('cuda')
+            processed_batch = _resample_torch(batch_on_gpu, num, axis = axis)
+            data_result.append(processed_batch.cpu().numpy())
+            batch_on_gpu = None
+            del batch_on_gpu
+            torch.cuda.empty_cache()
 
+        # data_torch = torch.from_numpy(data).to('cuda')
+        # data_result = _resample_torch(data_torch, num, axis = axis)
+        # data_torch = None
+        # data_result = np.array(data_result.to('cpu'))
+        return np.concatenate(data_result, axis=0) #data_result
+    return resample_func
 
 
 def _resample_torch(x, num, axis=0, window=None):

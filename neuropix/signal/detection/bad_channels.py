@@ -10,7 +10,7 @@ def detect_bad_channels_by_mean(mean_threshold=500):
         return modified_data
     return detect_func
    
-def detect_bad_channels_by_std(data, std_threshold=3.0):
+def detect_bad_channels_by_std(std_threshold=3.0):
     def detect_func(data):
         channel_stds = np.std(data, axis=1)
         mean_std = np.mean(channel_stds)
